@@ -1,0 +1,101 @@
+<?php
+/**
+ * ============================================================
+ * SEO CONTENT ENGINE – OVERRIDE GOD MODE
+ * ============================================================
+ */
+
+define('DOMAIN', $_SERVER['HTTP_HOST']);
+define('BASE_PATH', $_SERVER['DOCUMENT_ROOT']);
+
+// ================= URL & KEYWORD =================
+
+$path = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+$slug = $path ?: 'home';
+
+$keyword = ucwords(str_replace('-', ' ', $slug));
+$canonical = 'https://' . DOMAIN . ($slug !== 'home' ? "/$slug/" : '/');
+
+// ================= DATA LOADER =================
+
+function load_data($file, $fallback) {
+    return (file_exists($file) && ($d = file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES)))
+        ? $d : $fallback;
+}
+
+$prefixes = load_data(BASE_PATH.'/data/prefixes.txt', [
+    'Akses Resmi','Link Terbaru','Situs Terpercaya','Platform Aman','Website Resmi'
+]);
+
+$suffixes = load_data(BASE_PATH.'/data/suffixes.txt', [
+    'Terpercaya','Anti Blokir','Terbaik','Resmi','Update Hari Ini'
+]);
+
+$actions = load_data(BASE_PATH.'/data/actions.txt', [
+    'Daftar Sekarang','Main Hari Ini','Cek Sekarang','Gabung Sekarang'
+]);
+
+$descs = load_data(BASE_PATH.'/data/desc.txt', [
+    '%keyword% %suffix% dengan sistem stabil dan aman. %action% sekarang.'
+]);
+
+$prefix = $prefixes[array_rand($prefixes)];
+$suffix = $suffixes[array_rand($suffixes)];
+$action = $actions[array_rand($actions)];
+
+$title = "$prefix $keyword $suffix | " . DOMAIN;
+$description = str_replace(
+    ['%keyword%','%suffix%','%action%'],
+    [$keyword,$suffix,$action],
+    $descs[array_rand($descs)]
+);
+
+// ================= AUTHORITY CONTENT =================
+
+$paragraphs = [
+    "$keyword merupakan topik yang banyak dicari karena kestabilan sistem dan kemudahan aksesnya.",
+    "Banyak pengguna memilih $keyword karena performa cepat dan kompatibilitas di berbagai perangkat.",
+    "Struktur layanan pada $keyword dirancang untuk memberikan pengalaman yang konsisten.",
+    "Jika kamu mencari referensi yang relevan, $keyword menjadi salah satu opsi yang layak dipertimbangkan."
+];
+
+shuffle($paragraphs);
+
+// ================= INTERNAL LINK NETWORK =================
+
+$links = [];
+for ($i=1; $i<=15; $i++) {
+    $links[] = strtolower(str_replace(' ','-',$keyword))."-info-$i";
+}
+
+// ================= OUTPUT =================
+
+header('Content-Type: text/html; charset=UTF-8');
+?>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title><?=htmlspecialchars($title)?></title>
+<meta name="description" content="<?=htmlspecialchars($description)?>">
+<link rel="canonical" href="<?=$canonical?>">
+<meta name="robots" content="index,follow">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+
+<h1><?=htmlspecialchars($keyword)?></h1>
+
+<?php foreach ($paragraphs as $p): ?>
+<p><?=htmlspecialchars($p)?></p>
+<?php endforeach; ?>
+
+<h2>Topik Terkait</h2>
+<ul>
+<?php foreach ($links as $l): ?>
+<li><a href="/<?=$l?>/"><?=ucwords(str_replace('-',' ',$l))?></a></li>
+<?php endforeach; ?>
+</ul>
+
+</body>
+</html>a
