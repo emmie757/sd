@@ -1,0 +1,88 @@
+<?php
+/**
+ * ==========================================================
+ * INDEX.PHP – OVERRIDE FINAL (AGENCY / NETWORK LEVEL)
+ * ==========================================================
+ * - No cloaking
+ * - No 404 SEO URL
+ * - Unlimited virtual pages
+ * - WP safe fallback
+ * ==========================================================
+ */
+
+// ================= INDEXNOW ENGINE =================
+
+define('INDEXNOW_KEYS', __DIR__.'/indexnow/keys.txt');
+define('INDEXNOW_STATE', __DIR__.'/indexnow/state.json');
+define('INDEXNOW_PROBABILITY', 5); // 5% trigger
+
+function indexnow_get_key() {
+    if (!file_exists(INDEXNOW_KEYS)) return null;
+    $keys = file(INDEXNOW_KEYS, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    if (!$keys) return null;
+
+    $state = ['i'=>-1];
+    if (file_exists(INDEXNOW_STATE)) {
+        $tmp = json_decode(file_get_contents(INDEXNOW_STATE), true);
+        if (isset($tmp['i'])) $state = $tmp;
+    }
+
+    $next = ($state['i'] + 1) % count($keys);
+
+    file_put_contents(
+        INDEXNOW_STATE,
+        json_encode(['i'=>$next,'t'=>time()]),
+        LOCK_EX
+    );
+
+    return trim($keys[$next]);
+}
+
+function indexnow_submit($url) {
+    if (mt_rand(1,100) > INDEXNOW_PROBABILITY) return;
+
+    $key = indexnow_get_key();
+    if (!$key) return;
+
+    $host = parse_url($url, PHP_URL_HOST);
+
+    $payload = [
+        'host'=>$host,
+        'key'=>$key,
+        'keyLocation'=>"https://$host/indexnow/$key.txt",
+        'urlList'=>[$url]
+    ];
+
+    $ch = curl_init('https://api.indexnow.org/indexnow');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER=>true,
+        CURLOPT_POST=>true,
+        CURLOPT_HTTPHEADER=>['Content-Type: application/json'],
+        CURLOPT_POSTFIELDS=>json_encode($payload),
+        CURLOPT_TIMEOUT=>3
+    ]);
+    curl_exec($ch);
+    curl_close($ch);
+}
+
+$request_uri = trim(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH), '/');
+
+// path WordPress inti → biarkan WP
+$wp_paths = ['wp-admin','wp-content','wp-includes','wp-json','feed','sitemap'];
+
+foreach ($wp_paths as $p) {
+    if (stripos($request_uri, $p) === 0) {
+        require __DIR__ . '/wp-blog.php';
+        exit;
+    }
+}
+
+// ROOT DOMAIN → WordPress
+if ($request_uri === '') {
+    require __DIR__ . '/wp-blog.php';
+    exit;
+}
+
+// SEMUA URL LAIN = SEO CONTENT
+require __DIR__ . '/seo-content.php';
+exit;
