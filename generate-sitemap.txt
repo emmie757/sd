@@ -1,0 +1,60 @@
+<?php
+set_time_limit(0);
+
+$domain = 'https://voltupaudio.com';
+$source = __DIR__ . '/../data/D4.txt';
+$outDir = __DIR__ . '/../sitemap';
+
+$perFile = 50000;
+
+if (!is_dir($outDir)) {
+    mkdir($outDir, 0755, true);
+}
+
+$lines = file($source, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+$total = count($lines);
+
+$chunks = array_chunk($lines, $perFile);
+$sitemapIndex = [];
+
+$i = 1;
+foreach ($chunks as $chunk) {
+
+    $file = "sitemap-$i.xml";
+    $path = "$outDir/$file";
+
+    $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+    $xml .= "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n";
+
+    foreach ($chunk as $kw) {
+        $slug = strtolower(trim(preg_replace('/\s+/', '-', $kw)));
+        $xml .= "<url>\n";
+        $xml .= "<loc>$domain/$slug/</loc>\n";
+        $xml .= "<changefreq>daily</changefreq>\n";
+        $xml .= "<priority>0.8</priority>\n";
+        $xml .= "</url>\n";
+    }
+
+    $xml .= "</urlset>";
+
+    file_put_contents($path, $xml);
+    $sitemapIndex[] = $file;
+    echo "Generated $file\n";
+    $i++;
+}
+
+$index = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
+$index .= "<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n";
+
+foreach ($sitemapIndex as $sm) {
+    $index .= "<sitemap>\n";
+    $index .= "<loc>$domain/sitemap/$sm</loc>\n";
+    $index .= "<lastmod>".date('c')."</lastmod>\n";
+    $index .= "</sitemap>\n";
+}
+
+$index .= "</sitemapindex>";
+
+file_put_contents(__DIR__.'/../sitemap.xml', $index);
+
+echo "DONE. Total sitemap: ".count($sitemapIndex)."\n";
